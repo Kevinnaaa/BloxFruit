@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local Camera = game:GetService("Workspace").CurrentCamera
 local Teams = game:GetService("Teams")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -27,7 +28,10 @@ local Config = {
     JumpPower = 80,
     MaxAirJumps = 5,
     ESPEnabled = true,
-    MaxESPDistance = 2000
+    MaxESPDistance = 2000,
+    AutoPressMode = "Sequence", -- "Sequence" or "Hold"
+    AutoPressEnabled = false,
+    PressKey = Enum.KeyCode.One
 }
 
 -- Toggle Settings
@@ -41,6 +45,8 @@ local airJumpsLeft = 0
 local isGrounded = false
 local ESPObjects = {}
 local espConnections = {}
+local autoPressRunning = false
+local autoPressCoroutine = nil
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -67,6 +73,12 @@ local function terminateScript()
     ScriptActive = false
     Settings.ESPEnabled = false
     
+    if autoPressCoroutine then
+        coroutine.close(autoPressCoroutine)
+        autoPressCoroutine = nil
+    end
+    autoPressRunning = false
+    
     pcall(function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
@@ -92,6 +104,72 @@ local function terminateScript()
     espConnections = {}
     
     print("✓ ESP Terminated")
+end
+
+-- =============================================
+-- AUTO PRESS FUNCTIONS
+-- =============================================
+local function simulateKeyPress(key)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end)
+end
+
+local function startAutoPressSequence()
+    if autoPressRunning then return end
+    autoPressRunning = true
+    
+    autoPressCoroutine = coroutine.create(function()
+        while autoPressRunning and ScriptActive do
+            -- Press keys 1 through 5 in sequence
+            for i = 1, 5 do
+                if not autoPressRunning or not ScriptActive then break end
+                local key = Enum.KeyCode["Key" .. i]
+                simulateKeyPress(key)
+                task.wait(0.3) -- Wait between key presses
+            end
+            task.wait(0.5) -- Wait between sequences
+        end
+    end)
+    
+    coroutine.resume(autoPressCoroutine)
+end
+
+local function startAutoPressHold()
+    if autoPressRunning then return end
+    autoPressRunning = true
+    
+    autoPressCoroutine = coroutine.create(function()
+        while autoPressRunning and ScriptActive do
+            -- Hold key 1 for 5 seconds
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                task.wait(5)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+            end)
+            task.wait(0.5) -- Wait before next hold
+        end
+    end)
+    
+    coroutine.resume(autoPressCoroutine)
+end
+
+local function stopAutoPress()
+    autoPressRunning = false
+    if autoPressCoroutine then
+        coroutine.close(autoPressCoroutine)
+        autoPressCoroutine = nil
+    end
+    -- Release any held keys
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        for i = 1, 5 do
+            local key = Enum.KeyCode["Key" .. i]
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
+        end
+    end)
 end
 
 -- =============================================
@@ -559,12 +637,94 @@ local function CreateInfoLabel(parent, text, yPos, color)
     return label
 end
 
+local function CreateRadioButton(parent, title, group, default, yPos, callback)
+    local bgSize = isMobile and 34 or 30
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, -30, 0, bgSize)
+    bg.Position = UDim2.new(0, 15, 0, yPos)
+    bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    bg.BorderSizePixel = 0
+    bg.Parent = parent
+    
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 4)
+    bgCorner.Parent = bg
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.7, -10, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Text = title
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = isMobile and 10 or 11
+    label.Parent = bg
+    
+    local state = default
+    
+    local radio = Instance.new("Frame")
+    radio.Size = UDim2.new(0, 18, 0, 18)
+    radio.Position = UDim2.new(1, -28, 0.5, -9)
+    radio.BackgroundColor3 = state and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(40, 40, 40)
+    radio.BorderSizePixel = 2
+    radio.BorderColor3 = Color3.fromRGB(80, 80, 80)
+    radio.Parent = bg
+    
+    local radioCorner = Instance.new("UICorner")
+    radioCorner.CornerRadius = UDim.new(1, 0)
+    radioCorner.Parent = radio
+    
+    if state then
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, 8, 0, 8)
+        dot.Position = UDim2.new(0.5, -4, 0.5, -4)
+        dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        dot.BorderSizePixel = 0
+        dot.Parent = radio
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = dot
+    end
+    
+    local function select()
+        -- Unselect others in group
+        for _, item in pairs(group) do
+            if item ~= bg then
+                local radioFrame = item:FindFirstChildWhichIsA("Frame")
+                if radioFrame then
+                    radioFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                    local oldDot = radioFrame:FindFirstChildWhichIsA("Frame")
+                    if oldDot then oldDot:Destroy() end
+                end
+            end
+        end
+        
+        radio.BackgroundColor3 = Color3.fromRGB(60, 160, 60)
+        local newDot = Instance.new("Frame")
+        newDot.Size = UDim2.new(0, 8, 0, 8)
+        newDot.Position = UDim2.new(0.5, -4, 0.5, -4)
+        newDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        newDot.BorderSizePixel = 0
+        newDot.Parent = radio
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = newDot
+        
+        callback(title)
+    end
+    
+    bg.MouseButton1Click:Connect(select)
+    return bg
+end
+
 -- =============================================
 -- CREATE TABS
 -- =============================================
 local ESPPage = CreateTab("ESP", "👁️", 1)
 local PlayerPage = CreateTab("Player", "👤", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
+local MasteryPage = CreateTab("Mastery", "⭐", 3)
+local SettingsPage = CreateTab("Settings", "⚙️", 4)
 
 -- =============================================
 -- ESP TAB
@@ -716,6 +876,137 @@ PlayerCountLabel.TextXAlignment = Enum.TextXAlignment.Left
 PlayerCountLabel.Font = Enum.Font.GothamBold
 PlayerCountLabel.TextSize = 10
 PlayerCountLabel.Parent = PlayerPage
+
+-- =============================================
+-- MASTERY TAB - Auto Press Options
+-- =============================================
+CreateSection(MasteryPage, "AUTO PRESS CONTROLS", 10)
+
+-- Status Display
+local AutoPressStatus = Instance.new("TextLabel")
+AutoPressStatus.Size = UDim2.new(1, -30, 0, 16)
+AutoPressStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
+AutoPressStatus.BackgroundTransparency = 1
+AutoPressStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+AutoPressStatus.Text = "● Auto Press: Disabled"
+AutoPressStatus.TextXAlignment = Enum.TextXAlignment.Left
+AutoPressStatus.Font = Enum.Font.Gotham
+AutoPressStatus.TextSize = 10
+AutoPressStatus.Parent = MasteryPage
+
+-- Enable/Disable Toggle
+CreateToggle(MasteryPage, "Enable Auto Press", false, isMobile and 58 or 54, function(state)
+    Config.AutoPressEnabled = state
+    if state then
+        if Config.AutoPressMode == "Sequence" then
+            startAutoPressSequence()
+            AutoPressStatus.Text = "● Auto Press: Running (Sequence)"
+            AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+        else
+            startAutoPressHold()
+            AutoPressStatus.Text = "● Auto Press: Running (Hold)"
+            AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+        end
+    else
+        stopAutoPress()
+        AutoPressStatus.Text = "● Auto Press: Disabled"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end
+end)
+
+CreateSection(MasteryPage, "PRESS MODE", isMobile and 100 or 92)
+
+-- Radio button group
+local radioGroup = {}
+
+-- Option 1: Sequence (1-5)
+CreateRadioButton(MasteryPage, "Sequence (1-5)", radioGroup, Config.AutoPressMode == "Sequence", isMobile and 124 or 116, function(value)
+    Config.AutoPressMode = "Sequence"
+    if Config.AutoPressEnabled then
+        stopAutoPress()
+        startAutoPressSequence()
+        AutoPressStatus.Text = "● Auto Press: Running (Sequence)"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end)
+
+-- Option 2: Hold (Key 1 for 5 seconds)
+CreateRadioButton(MasteryPage, "Hold (Key 1 for 5s)", radioGroup, Config.AutoPressMode == "Hold", isMobile and 164 or 154, function(value)
+    Config.AutoPressMode = "Hold"
+    if Config.AutoPressEnabled then
+        stopAutoPress()
+        startAutoPressHold()
+        AutoPressStatus.Text = "● Auto Press: Running (Hold)"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end)
+
+-- Option 3: Hold (Key 2 for 5 seconds)
+CreateRadioButton(MasteryPage, "Hold (Key 2 for 5s)", radioGroup, false, isMobile and 204 or 192, function(value)
+    Config.AutoPressMode = "Hold2"
+    if Config.AutoPressEnabled then
+        stopAutoPress()
+        -- Custom hold for key 2
+        autoPressRunning = true
+        autoPressCoroutine = coroutine.create(function()
+            while autoPressRunning and ScriptActive do
+                pcall(function()
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Two, false, game)
+                    task.wait(5)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Two, false, game)
+                end)
+                task.wait(0.5)
+            end
+        end)
+        coroutine.resume(autoPressCoroutine)
+        AutoPressStatus.Text = "● Auto Press: Running (Hold Key 2)"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end)
+
+-- Option 4: Hold (Key 3 for 5 seconds)
+CreateRadioButton(MasteryPage, "Hold (Key 3 for 5s)", radioGroup, false, isMobile and 244 or 230, function(value)
+    Config.AutoPressMode = "Hold3"
+    if Config.AutoPressEnabled then
+        stopAutoPress()
+        autoPressRunning = true
+        autoPressCoroutine = coroutine.create(function()
+            while autoPressRunning and ScriptActive do
+                pcall(function()
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Three, false, game)
+                    task.wait(5)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Three, false, game)
+                end)
+                task.wait(0.5)
+            end
+        end)
+        coroutine.resume(autoPressCoroutine)
+        AutoPressStatus.Text = "● Auto Press: Running (Hold Key 3)"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end)
+
+-- Option 5: Hold (Key 4 for 5 seconds)
+CreateRadioButton(MasteryPage, "Hold (Key 4 for 5s)", radioGroup, false, isMobile and 284 or 268, function(value)
+    Config.AutoPressMode = "Hold4"
+    if Config.AutoPressEnabled then
+        stopAutoPress()
+        autoPressRunning = true
+        autoPressCoroutine = coroutine.create(function()
+            while autoPressRunning and ScriptActive do
+                pcall(function()
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Four, false, game)
+                    task.wait(5)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Four, false, game)
+                end)
+                task.wait(0.5)
+            end
+        end)
+        coroutine.resume(autoPressCoroutine)
+        AutoPressStatus.Text = "● Auto Press: Running (Hold Key 4)"
+        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end)
 
 -- =============================================
 -- SETTINGS TAB
@@ -1148,6 +1439,9 @@ print("║  ⚡ Speed: " .. Config.Speed .. "                      ║")
 print("║  🦘 Jump: " .. Config.JumpPower .. " | Air: " .. Config.MaxAirJumps .. "   ║")
 print("║  👁️  ESP Active                      ║")
 print("║  📏 Range: " .. Config.MaxESPDistance .. "m              ║")
+print("║  ⭐ Mastery Tab: Auto Press         ║")
+print("║     - Sequence (Keys 1-5)          ║")
+print("║     - Hold (Key 1-4 for 5s)       ║")
 print("╠══════════════════════════════════════╣")
 print("║  Zero Dependencies - 100% Standalone║")
 print("║  Sailor Piece Style Tabbed UI       ║")
