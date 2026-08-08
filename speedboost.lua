@@ -15,7 +15,7 @@ local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local Camera = game:GetService("Workspace").CurrentCamera
 local Teams = game:GetService("Teams")
-local ContextActionService = game:GetService("ContextActionService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -113,21 +113,25 @@ local function terminateScript()
 end
 
 -- =============================================
--- AUTO PRESS FUNCTIONS
+-- AUTO PRESS FUNCTIONS (Using VirtualInputManager)
 -- =============================================
 local function simulateKeyPress(keyCode)
     pcall(function()
-        UserInputService:SetKeyDown(keyCode, true)
+        -- Key down
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
         task.wait(0.05)
-        UserInputService:SetKeyDown(keyCode, false)
+        -- Key up
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
     end)
 end
 
 local function simulateKeyHold(keyCode, duration)
     pcall(function()
-        UserInputService:SetKeyDown(keyCode, true)
+        -- Key down
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
         task.wait(duration)
-        UserInputService:SetKeyDown(keyCode, false)
+        -- Key up
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
     end)
 end
 
@@ -166,9 +170,8 @@ local function stopAutoPress()
     pcall(function()
         for i = 1, 5 do
             local key = Enum.KeyCode["Key" .. i]
-            UserInputService:SetKeyDown(key, false)
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
         end
-        ContextActionService:UnbindAction("AutoPress")
     end)
 end
 
