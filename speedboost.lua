@@ -15,7 +15,6 @@ local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local Camera = game:GetService("Workspace").CurrentCamera
 local Teams = game:GetService("Teams")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -28,16 +27,7 @@ local Config = {
     JumpPower = 80,
     MaxAirJumps = 5,
     ESPEnabled = true,
-    MaxESPDistance = 2000,
-    AutoPressEnabled = false,
-    -- Each key: "Press" or "Hold"
-    KeyModes = {
-        [1] = "Press",
-        [2] = "Press",
-        [3] = "Press",
-        [4] = "Press",
-        [5] = "Press"
-    }
+    MaxESPDistance = 2000
 }
 
 -- Toggle Settings
@@ -51,8 +41,6 @@ local airJumpsLeft = 0
 local isGrounded = false
 local ESPObjects = {}
 local espConnections = {}
-local autoPressRunning = false
-local autoPressCoroutine = nil
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -79,12 +67,6 @@ local function terminateScript()
     ScriptActive = false
     Settings.ESPEnabled = false
     
-    if autoPressCoroutine then
-        coroutine.close(autoPressCoroutine)
-        autoPressCoroutine = nil
-    end
-    autoPressRunning = false
-    
     pcall(function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
@@ -110,78 +92,6 @@ local function terminateScript()
     espConnections = {}
     
     print("✓ ESP Terminated")
-end
-
--- =============================================
--- AUTO PRESS FUNCTIONS (Using VirtualInputManager + UserInputService)
--- =============================================
-local function simulateKeyPress(keyCode)
-    pcall(function()
-        -- Method 1: VirtualInputManager
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-        
-        -- Method 2: UserInputService (backup)
-        UserInputService:SetKeyDown(keyCode, true)
-        task.wait(0.05)
-        UserInputService:SetKeyDown(keyCode, false)
-    end)
-end
-
-local function simulateKeyHold(keyCode, duration)
-    pcall(function()
-        -- Method 1: VirtualInputManager
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(duration)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-        
-        -- Method 2: UserInputService (backup)
-        UserInputService:SetKeyDown(keyCode, true)
-        task.wait(duration)
-        UserInputService:SetKeyDown(keyCode, false)
-    end)
-end
-
-local function startAutoPress()
-    if autoPressRunning then return end
-    autoPressRunning = true
-    
-    autoPressCoroutine = coroutine.create(function()
-        while autoPressRunning and ScriptActive do
-            for i = 1, 5 do
-                if not autoPressRunning or not ScriptActive then break end
-                local key = Enum.KeyCode["Key" .. i]
-                local mode = Config.KeyModes[i] or "Press"
-                
-                if mode == "Press" then
-                    simulateKeyPress(key)
-                    task.wait(0.3)
-                else -- Hold mode
-                    simulateKeyHold(key, 5)
-                    task.wait(0.5)
-                end
-            end
-            task.wait(0.5) -- Wait between cycles
-        end
-    end)
-    
-    coroutine.resume(autoPressCoroutine)
-end
-
-local function stopAutoPress()
-    autoPressRunning = false
-    if autoPressCoroutine then
-        coroutine.close(autoPressCoroutine)
-        autoPressCoroutine = nil
-    end
-    pcall(function()
-        for i = 1, 5 do
-            local key = Enum.KeyCode["Key" .. i]
-            VirtualInputManager:SendKeyEvent(false, key, false, game)
-            UserInputService:SetKeyDown(key, false)
-        end
-    end)
 end
 
 -- =============================================
@@ -259,7 +169,7 @@ local function scanBounty()
 end
 
 -- =============================================
--- GUI CREATION
+-- GUI CREATION (IDENTICAL TO SAILOR PIECE)
 -- =============================================
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "UniversalESP_GUI"
@@ -269,17 +179,17 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 480
+local mainHeight = 450
 if isMobile then
     mainWidth = 380
-    mainHeight = 400
+    mainHeight = 370
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -240)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -225)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -510,7 +420,7 @@ local function CreateTab(name, icon, index)
 end
 
 -- =============================================
--- UI HELPERS
+-- UI HELPERS (IDENTICAL TO SAILOR PIECE)
 -- =============================================
 local function CreateSection(parent, title, yPos)
     local section = Instance.new("Frame")
@@ -650,115 +560,11 @@ local function CreateInfoLabel(parent, text, yPos, color)
 end
 
 -- =============================================
--- CREATE KEY MODE TOGGLES
--- =============================================
-local keyToggleRefs = {}
-
-local function CreateKeyModeToggle(parent, keyNumber, yPos)
-    local bgSize = isMobile and 34 or 30
-    local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(1, -30, 0, bgSize)
-    bg.Position = UDim2.new(0, 15, 0, yPos)
-    bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    bg.BorderSizePixel = 0
-    bg.Parent = parent
-    
-    local bgCorner = Instance.new("UICorner")
-    bgCorner.CornerRadius = UDim.new(0, 4)
-    bgCorner.Parent = bg
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.5, -10, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.Text = "Key " .. keyNumber
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = isMobile and 10 or 11
-    label.Parent = bg
-    
-    -- Mode label
-    local modeLabel = Instance.new("TextLabel")
-    modeLabel.Size = UDim2.new(0.3, 0, 1, 0)
-    modeLabel.Position = UDim2.new(0.5, 0, 0, 0)
-    modeLabel.BackgroundTransparency = 1
-    modeLabel.TextColor3 = Config.KeyModes[keyNumber] == "Press" and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(255, 200, 100)
-    modeLabel.Text = Config.KeyModes[keyNumber] == "Press" and "⚡ Press" or "⏱ Hold"
-    modeLabel.TextXAlignment = Enum.TextXAlignment.Center
-    modeLabel.Font = Enum.Font.GothamBold
-    modeLabel.TextSize = isMobile and 9 or 10
-    modeLabel.Parent = bg
-    
-    local state = Config.KeyModes[keyNumber] == "Hold"
-    
-    local switchSize = isMobile and 40 or 36
-    local switchHeight = isMobile and 20 or 18
-    local switch = Instance.new("TextButton")
-    switch.Size = UDim2.new(0, switchSize, 0, switchHeight)
-    switch.Position = UDim2.new(1, isMobile and -52 or -46, 0.5, isMobile and -10 or -9)
-    switch.BackgroundColor3 = state and Color3.fromRGB(200, 150, 50) or Color3.fromRGB(60, 160, 60)
-    switch.BorderSizePixel = 0
-    switch.Text = ""
-    switch.AutoButtonColor = false
-    switch.Active = true
-    switch.ZIndex = 10
-    switch.Parent = bg
-    
-    local switchCorner = Instance.new("UICorner")
-    switchCorner.CornerRadius = UDim.new(1, 0)
-    switchCorner.Parent = switch
-    
-    local dotSize = isMobile and 16 or 14
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, dotSize, 0, dotSize)
-    dot.Position = state and UDim2.new(1, isMobile and -18 or -16, 0.5, isMobile and -8 or -7) or UDim2.new(0, 2, 0.5, isMobile and -8 or -7)
-    dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    dot.BorderSizePixel = 0
-    dot.Parent = switch
-    
-    local dotCorner = Instance.new("UICorner")
-    dotCorner.CornerRadius = UDim.new(1, 0)
-    dotCorner.Parent = dot
-    
-    local function toggleMode()
-        state = not state
-        switch.BackgroundColor3 = state and Color3.fromRGB(200, 150, 50) or Color3.fromRGB(60, 160, 60)
-        local targetPos = state and UDim2.new(1, isMobile and -18 or -16, 0.5, isMobile and -8 or -7) or UDim2.new(0, 2, 0.5, isMobile and -8 or -7)
-        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(dot, tweenInfo, {Position = targetPos})
-        tween:Play()
-        
-        if state then
-            Config.KeyModes[keyNumber] = "Hold"
-            modeLabel.Text = "⏱ Hold"
-            modeLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-        else
-            Config.KeyModes[keyNumber] = "Press"
-            modeLabel.Text = "⚡ Press"
-            modeLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-        end
-        
-        -- If auto-press is running, restart it with new settings
-        if Config.AutoPressEnabled and autoPressRunning then
-            stopAutoPress()
-            startAutoPress()
-        end
-    end
-    
-    switch.Activated:Connect(toggleMode)
-    
-    table.insert(keyToggleRefs, {bg = bg, switch = switch, modeLabel = modeLabel})
-    return bg
-end
-
--- =============================================
 -- CREATE TABS
 -- =============================================
 local ESPPage = CreateTab("ESP", "👁️", 1)
 local PlayerPage = CreateTab("Player", "👤", 2)
-local MasteryPage = CreateTab("Mastery", "⭐", 3)
-local SettingsPage = CreateTab("Settings", "⚙️", 4)
+local SettingsPage = CreateTab("Settings", "⚙️", 3)
 
 -- =============================================
 -- ESP TAB
@@ -912,66 +718,6 @@ PlayerCountLabel.TextSize = 10
 PlayerCountLabel.Parent = PlayerPage
 
 -- =============================================
--- MASTERY TAB - Auto Press Options
--- =============================================
-CreateSection(MasteryPage, "AUTO PRESS CONTROLS", 10)
-
--- Status Display
-local AutoPressStatus = Instance.new("TextLabel")
-AutoPressStatus.Size = UDim2.new(1, -30, 0, 16)
-AutoPressStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
-AutoPressStatus.BackgroundTransparency = 1
-AutoPressStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-AutoPressStatus.Text = "● Auto Press: Disabled"
-AutoPressStatus.TextXAlignment = Enum.TextXAlignment.Left
-AutoPressStatus.Font = Enum.Font.Gotham
-AutoPressStatus.TextSize = 10
-AutoPressStatus.Parent = MasteryPage
-
--- Enable/Disable Toggle
-CreateToggle(MasteryPage, "Enable Auto Press", false, isMobile and 58 or 54, function(state)
-    Config.AutoPressEnabled = state
-    if state then
-        startAutoPress()
-        AutoPressStatus.Text = "● Auto Press: Running"
-        AutoPressStatus.TextColor3 = Color3.fromRGB(0, 255, 100)
-    else
-        stopAutoPress()
-        AutoPressStatus.Text = "● Auto Press: Disabled"
-        AutoPressStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-    end
-end)
-
-CreateSection(MasteryPage, "KEY CONFIGURATION", isMobile and 100 or 92)
-
--- Key 1
-CreateKeyModeToggle(MasteryPage, 1, isMobile and 124 or 116)
-
--- Key 2
-CreateKeyModeToggle(MasteryPage, 2, isMobile and 164 or 154)
-
--- Key 3
-CreateKeyModeToggle(MasteryPage, 3, isMobile and 204 or 192)
-
--- Key 4
-CreateKeyModeToggle(MasteryPage, 4, isMobile and 244 or 230)
-
--- Key 5
-CreateKeyModeToggle(MasteryPage, 5, isMobile and 284 or 268)
-
--- Legend
-local LegendLabel = Instance.new("TextLabel")
-LegendLabel.Size = UDim2.new(1, -30, 0, 14)
-LegendLabel.Position = UDim2.new(0, 15, 0, isMobile and 324 or 306)
-LegendLabel.BackgroundTransparency = 1
-LegendLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
-LegendLabel.Text = "🟢 Press  |  🟡 Hold (5s)"
-LegendLabel.TextXAlignment = Enum.TextXAlignment.Left
-LegendLabel.Font = Enum.Font.Gotham
-LegendLabel.TextSize = 9
-LegendLabel.Parent = MasteryPage
-
--- =============================================
 -- SETTINGS TAB
 -- =============================================
 CreateSection(SettingsPage, "PERMANENT STATS", 10)
@@ -994,7 +740,7 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 190, function()
 end)
 
 -- =============================================
--- MINIMIZE TO TEXT
+-- MINIMIZE TO TEXT (IDENTICAL TO SAILOR PIECE)
 -- =============================================
 local function showMain()
     Main.Visible = true
@@ -1402,8 +1148,6 @@ print("║  ⚡ Speed: " .. Config.Speed .. "                      ║")
 print("║  🦘 Jump: " .. Config.JumpPower .. " | Air: " .. Config.MaxAirJumps .. "   ║")
 print("║  👁️  ESP Active                      ║")
 print("║  📏 Range: " .. Config.MaxESPDistance .. "m              ║")
-print("║  ⭐ Mastery Tab: Individual Keys    ║")
-print("║     Each key: Press or Hold (5s)   ║")
 print("╠══════════════════════════════════════╣")
 print("║  Zero Dependencies - 100% Standalone║")
 print("║  Sailor Piece Style Tabbed UI       ║")
