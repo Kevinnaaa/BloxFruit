@@ -113,25 +113,33 @@ local function terminateScript()
 end
 
 -- =============================================
--- AUTO PRESS FUNCTIONS (Using VirtualInputManager)
+-- AUTO PRESS FUNCTIONS (Using VirtualInputManager + UserInputService)
 -- =============================================
 local function simulateKeyPress(keyCode)
     pcall(function()
-        -- Key down
+        -- Method 1: VirtualInputManager
         VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
         task.wait(0.05)
-        -- Key up
         VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+        
+        -- Method 2: UserInputService (backup)
+        UserInputService:SetKeyDown(keyCode, true)
+        task.wait(0.05)
+        UserInputService:SetKeyDown(keyCode, false)
     end)
 end
 
 local function simulateKeyHold(keyCode, duration)
     pcall(function()
-        -- Key down
+        -- Method 1: VirtualInputManager
         VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
         task.wait(duration)
-        -- Key up
         VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+        
+        -- Method 2: UserInputService (backup)
+        UserInputService:SetKeyDown(keyCode, true)
+        task.wait(duration)
+        UserInputService:SetKeyDown(keyCode, false)
     end)
 end
 
@@ -171,6 +179,7 @@ local function stopAutoPress()
         for i = 1, 5 do
             local key = Enum.KeyCode["Key" .. i]
             VirtualInputManager:SendKeyEvent(false, key, false, game)
+            UserInputService:SetKeyDown(key, false)
         end
     end)
 end
