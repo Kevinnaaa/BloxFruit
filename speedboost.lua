@@ -318,7 +318,7 @@ MinimizeText.Position = UDim2.new(0.5, -200, 0.95, -22)
 MinimizeText.BackgroundColor3 = BACKGROUND
 MinimizeText.BorderSizePixel = 0
 MinimizeText.TextColor3 = ACCENT
-MinimizeText.Text = "FBG - FPS: --  |  MS: --"
+MinimizeText.Text = "👁️  Universal ESP  |  FPS: --  |  MS: --"
 MinimizeText.Font = Enum.Font.GothamBold
 MinimizeText.TextSize = isMobile and 14 or 13
 MinimizeText.AutoButtonColor = false
@@ -458,29 +458,6 @@ end)
 MinBtn.MouseLeave:Connect(function()
     TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
 end)
-
--- Close Button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = TopBar
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-CloseBtn.BackgroundTransparency = 0.2
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Position = UDim2.new(1, -16, 0.5, -16)
-CloseBtn.Size = UDim2.new(0, 32, 0, 32)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = TEXT
-CloseBtn.TextSize = 18
-RoundCorners(CloseBtn, 16)
-
-CloseBtn.MouseEnter:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.05}):Play()
-end)
-CloseBtn.MouseLeave:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
-end)
-
-CloseBtn.Activated:Connect(terminateScript)
 
 -- =============================================
 -- TABS
@@ -910,8 +887,7 @@ RangeDisplay.Text = "📏 Range: 2000m (Permanent)"
 RangeDisplay.TextXAlignment = Enum.TextXAlignment.Left
 RangeDisplay.Font = Enum.Font.GothamBold
 RangeDisplay.TextSize = 11
-RangeDisplay.Parent = ESPTab.container
-ESPTab.setY(ESPTab.getY() + 28)
+RangeDisplay.Parent = ESPTab.containerESPTab.setY(ESPTab.getY() + 28)
 
 -- =============================================
 -- PLAYER TAB CONTENT
@@ -1017,7 +993,7 @@ AddSection("PERMANENT STATS")
 AddSmallLabel("⚡ Walk Speed: " .. Config.Speed, Color3.fromRGB(0, 200, 255))
 AddSmallLabel("🦘 Jump Power: " .. Config.JumpPower, Color3.fromRGB(100, 200, 255))
 AddSmallLabel("🌀 Air Jumps: " .. Config.MaxAirJumps, Color3.fromRGB(200, 200, 100))
-AddSmallLabel("📏 ESP Range: 2000m (Fixed)", Color3.fromRGB(255, 200, 0))
+AddSmallLabel("📏 ESP Range: 2000m ", Color3.fromRGB(255, 200, 0))
 
 AddDivider()
 AddSection("CONTROLS")
@@ -1028,7 +1004,7 @@ AddButton("🔄 Toggle ESP", "Enable or disable ESP", function()
     ESPStatus.TextColor3 = Config.ESPEnabled and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-AddButton("⚠️ TERMINATE SCRIPT", "Stop all script execution", function()
+AddButton("⚠️ TERMINATE SCRIPT", "⚠️ Completely close the script and remove all UI", function()
     terminateScript()
 end)
 
@@ -1215,7 +1191,7 @@ task.spawn(function()
         
         -- Update Minimized Bar
         if Settings.Minimized then
-            MinimizeText.Text = "👁️  Universal ESP  |  FPS: " .. currentFPS .. "  |  MS: " .. currentPing
+            MinimizeText.Text = "👁️|  FPS: " .. currentFPS .. "  |  MS: " .. currentPing
             
             if currentFPS >= 60 then
                 MinimizeText.TextColor3 = Color3.fromRGB(0, 255, 100)
@@ -1526,13 +1502,13 @@ print("╠═══════════════════════�
 print("║  ⚡ Speed: " .. Config.Speed .. "                      ║")
 print("║  🦘 Jump: " .. Config.JumpPower .. " | Air: " .. Config.MaxAirJumps .. "   ║")
 print("║  👁️  ESP Active                      ║")
-print("║  📏 Range: 2000m (Permanent)        ║")
+print("║  📏 Range: 2000m                     ║")
 print("╠══════════════════════════════════════╣")
 print("║  Dark Purple Theme (#221C35)        ║")
 print("║  Modern Tabbed UI                   ║")
 print("║  Click '─' to minimize to bar       ║")
 print("║  Click text to restore GUI          ║")
-print("║  Click '✕' to terminate             ║")
+print("║  Use 'TERMINATE SCRIPT' to close    ║")
 print("║  Re-execute anytime after close     ║")
 print("╚══════════════════════════════════════╝")
 print("")
