@@ -342,7 +342,7 @@ MinShadow.Size = UDim2.new(1, -12, 1, -12)
 RoundCorners(MinShadow, 14)
 
 -- =============================================
--- TOP BAR
+-- TOP BAR (NO CLOSE BUTTON)
 -- =============================================
 local TopBar = Instance.new("Frame")
 TopBar.Parent = Main
@@ -438,13 +438,13 @@ StatusDot.Position = UDim2.new(1, -8, 0.5, -4)
 StatusDot.Size = UDim2.new(0, 8, 0, 8)
 RoundCorners(StatusDot, 4)
 
--- Minimize Button
+-- Minimize Button (Only button on top bar now)
 local MinBtn = Instance.new("TextButton")
 MinBtn.Parent = TopBar
 MinBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
 MinBtn.BackgroundTransparency = 0.2
 MinBtn.BorderSizePixel = 0
-MinBtn.Position = UDim2.new(1, -52, 0.5, -16)
+MinBtn.Position = UDim2.new(1, -45, 0.5, -16)
 MinBtn.Size = UDim2.new(0, 32, 0, 32)
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.Text = "─"
@@ -887,7 +887,8 @@ RangeDisplay.Text = "📏 Range: 2000m (Permanent)"
 RangeDisplay.TextXAlignment = Enum.TextXAlignment.Left
 RangeDisplay.Font = Enum.Font.GothamBold
 RangeDisplay.TextSize = 11
-RangeDisplay.Parent = ESPTab.containerESPTab.setY(ESPTab.getY() + 28)
+RangeDisplay.Parent = ESPTab.container
+ESPTab.setY(ESPTab.getY() + 28)
 
 -- =============================================
 -- PLAYER TAB CONTENT
@@ -993,7 +994,7 @@ AddSection("PERMANENT STATS")
 AddSmallLabel("⚡ Walk Speed: " .. Config.Speed, Color3.fromRGB(0, 200, 255))
 AddSmallLabel("🦘 Jump Power: " .. Config.JumpPower, Color3.fromRGB(100, 200, 255))
 AddSmallLabel("🌀 Air Jumps: " .. Config.MaxAirJumps, Color3.fromRGB(200, 200, 100))
-AddSmallLabel("📏 ESP Range: 2000m ", Color3.fromRGB(255, 200, 0))
+AddSmallLabel("📏 ESP Range: 2000m (Fixed)", Color3.fromRGB(255, 200, 0))
 
 AddDivider()
 AddSection("CONTROLS")
@@ -1191,7 +1192,7 @@ task.spawn(function()
         
         -- Update Minimized Bar
         if Settings.Minimized then
-            MinimizeText.Text = "👁️|  FPS: " .. currentFPS .. "  |  MS: " .. currentPing
+            MinimizeText.Text = "👁️  Universal ESP  |  FPS: " .. currentFPS .. "  |  MS: " .. currentPing
             
             if currentFPS >= 60 then
                 MinimizeText.TextColor3 = Color3.fromRGB(0, 255, 100)
@@ -1502,7 +1503,7 @@ print("╠═══════════════════════�
 print("║  ⚡ Speed: " .. Config.Speed .. "                      ║")
 print("║  🦘 Jump: " .. Config.JumpPower .. " | Air: " .. Config.MaxAirJumps .. "   ║")
 print("║  👁️  ESP Active                      ║")
-print("║  📏 Range: 2000m                     ║")
+print("║  📏 Range: 2000m (Permanent)        ║")
 print("╠══════════════════════════════════════╣")
 print("║  Dark Purple Theme (#221C35)        ║")
 print("║  Modern Tabbed UI                   ║")
